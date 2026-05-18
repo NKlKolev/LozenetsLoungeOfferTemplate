@@ -250,24 +250,15 @@ with col_form:
               disabled=len(st.session_state.rows) <= 1)
 
     # Live totals summary
-    subtotal   = sum(r["price_per_hour"] * r["duration"] * (1 - r.get("discount", 0.0) / 100)
-                     for r in st.session_state.rows)
-    vat_amount = subtotal * 0.20
-    total_incl = subtotal + vat_amount
+    total = sum(r["price_per_hour"] * r["duration"] * (1 - r.get("discount", 0.0) / 100)
+                for r in st.session_state.rows)
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    ta, tb, tc = st.columns([4, 1, 1])
-    tb.markdown(
-        f"<div style='text-align:right; font-size:0.88rem; padding:4px 6px;'>"
-        f"Без ДДС:<br/><b>€ {subtotal:,.2f}</b><br/>"
-        f"ДДС 20%:<br/><b>€ {vat_amount:,.2f}</b></div>",
-        unsafe_allow_html=True,
-    )
+    _, tc = st.columns([4, 2])
     tc.markdown(
         f"<div style='text-align:center; background:{GREEN}; color:white;"
-        f"border-radius:6px; padding:6px 8px; font-size:0.92rem;'>"
-        f"Общо вкл. ДДС:<br/><b style='font-size:1.1rem;'>"
-        f"€ {total_incl:,.2f}</b></div>",
+        f"border-radius:6px; padding:8px 10px; font-size:0.95rem;'>"
+        f"Обща цена:<br/><b style='font-size:1.15rem;'>€ {total:,.2f}</b></div>",
         unsafe_allow_html=True,
     )
 
@@ -275,12 +266,11 @@ with col_form:
     section("4.  Допълнителни Услуги")
 
     SERVICE_DEFS = [
-        ("bar",        "Бар и пакет с напитки",                       "цена при запитване"),
-        ("catering",   "Кетъринг / бюфет",                            "цена при запитване"),
-        ("flowers",    "Флорална декорация",                           "цена при запитване"),
-        ("sound",      "Ъпгрейд на професионална озвучителна система", "цена при запитване"),
-        ("photo",      "Фотография / видеозаснемане",                  "цена при запитване"),
-        ("extra_time", "Удължено време за подготовка",                 "€50 / час"),
+        ("bar",        "Бар и пакет с напитки",       "цена при запитване"),
+        ("catering",   "Кетъринг / бюфет",            "цена при запитване"),
+        ("flowers",    "Флорална декорация",           "цена при запитване"),
+        ("photo",      "Фотография / видеозаснемане",  "цена и наличност при запитване"),
+        ("extra_time", "Удължено време за подготовка", "€50 / час"),
     ]
 
     services = {}
@@ -334,9 +324,7 @@ with col_form:
             "price_rows":          pdf_rows,
             "additional_services": services,
             "valid_until":         valid_str,
-            "subtotal_str":        f"€ {subtotal:,.2f}",
-            "vat_str":             f"€ {vat_amount:,.2f}",
-            "total_vat_str":       f"€ {total_incl:,.2f}",
+            "total_vat_str":       f"€ {total:,.2f}",
         }
 
         buf = io.BytesIO()
