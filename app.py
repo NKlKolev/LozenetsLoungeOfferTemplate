@@ -143,13 +143,13 @@ else:
 if "rows" not in st.session_state:
     st.session_state.rows = [
         {"description": "Почасово наемане", "price_per_hour": 75.0,
-         "duration": 2.0, "fees": 0.0}
+         "duration": 2.0, "discount": 0.0}
     ]
 
 
 def _add_row():
     st.session_state.rows.append(
-        {"description": "", "price_per_hour": 0.0, "duration": 0.0, "fees": 0.0}
+        {"description": "", "price_per_hour": 0.0, "duration": 0.0, "discount": 0.0}
     )
 
 
@@ -201,7 +201,7 @@ with col_form:
     # Table column headers
     hc = st.columns([3, 2, 2, 2, 2])
     for col, lbl in zip(hc, ["Описание", "Цена / час (€)",
-                               "Часове", "Отстъпки (€)", "Общо (€)"]):
+                               "Часове", "Отстъпка (%)", "Общо (€)"]):
         col.markdown(
             f"<div style='background:{GREEN}; color:white; font-weight:700;"
             f"font-size:0.82rem; padding:5px 6px; text-align:center;"
@@ -228,13 +228,13 @@ with col_form:
             min_value=0.0, step=0.5, format="%.1f",
             key=f"dur_{i}", label_visibility="collapsed",
         )
-        row["fees"] = c3.number_input(
-            "fees", value=float(row["fees"]),
-            step=5.0, format="%.2f",
-            key=f"fees_{i}", label_visibility="collapsed",
-            help="Отрицателно = отстъпка",
+        row["discount"] = c3.number_input(
+            "disc", value=float(row.get("discount", 0.0)),
+            min_value=0.0, max_value=100.0, step=1.0, format="%.0f",
+            key=f"disc_{i}", label_visibility="collapsed",
+            help="Въведете % отстъпка (0–100)",
         )
-        row_total = row["price_per_hour"] * row["duration"] + row["fees"]
+        row_total = row["price_per_hour"] * row["duration"] * (1 - row["discount"] / 100)
         c4.markdown(
             f"<div style='background:#EAF1F0; border:1px solid #ccc;"
             f"border-radius:4px; padding:7px 8px; font-weight:700;"
@@ -250,7 +250,7 @@ with col_form:
               disabled=len(st.session_state.rows) <= 1)
 
     # Live totals summary
-    subtotal   = sum(r["price_per_hour"] * r["duration"] + r["fees"]
+    subtotal   = sum(r["price_per_hour"] * r["duration"] * (1 - r.get("discount", 0.0) / 100)
                      for r in st.session_state.rows)
     vat_amount = subtotal * 0.20
     total_incl = subtotal + vat_amount
@@ -320,8 +320,8 @@ with col_form:
                 "description":    r["description"],
                 "price_per_hour": f"€ {r['price_per_hour']:,.2f} / час",
                 "duration":       f"{r['duration']:.1f} ч.",
-                "fees":           (f"€ {r['fees']:+,.2f}" if r["fees"] != 0 else "—"),
-                "total":          f"€ {r['price_per_hour'] * r['duration'] + r['fees']:,.2f}",
+                "fees":           (f"{r['discount']:.0f}%" if r.get("discount", 0) else "—"),
+                "total":          f"€ {r['price_per_hour'] * r['duration'] * (1 - r.get('discount', 0) / 100):,.2f}",
             }
             for r in st.session_state.rows
         ]
@@ -391,8 +391,8 @@ with col_info:
                 padding:14px 14px; border-radius:4px; font-size:0.83rem;
                 line-height:1.6;">
       <b>Съвети</b><br/><br/>
-      ● <b>Общо</b> = Цена × Часове + Отстъпки<br/>
-      ● Отрицателна стойност в <i>Отстъпки</i> = намаление<br/>
+      ● <b>Общо</b> = Цена × Часове × (1 − Отстъпка %)<br/>
+      ● Въведете 10 в <i>Отстъпка</i> за 10% намаление<br/>
       ● <b>ДДС 20%</b> и крайната сума са автоматични<br/>
       ● Всеки ред в <i>Включено</i> = отделна точка в PDF<br/>
       ● Датата за валидност се избира с календара
