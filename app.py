@@ -13,6 +13,7 @@ from datetime import date, timedelta
 import streamlit as st
 
 from pdf_builder import build_pdf
+from word_builder import build_word
 
 # ══════════════════════════════════════════════════════════════════════════
 #  CONFIG
@@ -258,7 +259,7 @@ with col_form:
     tc.markdown(
         f"<div style='text-align:center; background:{GREEN}; color:white;"
         f"border-radius:6px; padding:8px 10px; font-size:0.95rem;'>"
-        f"Обща цена:<br/><b style='font-size:1.15rem;'>€ {total:,.2f}</b></div>",
+        f"Обща цена (вкл. ДДС):<br/><b style='font-size:1.15rem;'>€ {total:,.2f}</b></div>",
         unsafe_allow_html=True,
     )
 
@@ -302,10 +303,10 @@ with col_form:
     st.markdown("<hr style='border-color:#ccc; margin-top:24px;'/>",
                 unsafe_allow_html=True)
 
-    if st.button("📄  Генерирай PDF оферта",
+    if st.button("📄  Генерирай оферта (PDF + Word)",
                  type="primary", use_container_width=True):
 
-        pdf_rows = [
+        offer_rows = [
             {
                 "description":    r["description"],
                 "price_per_hour": f"€ {r['price_per_hour']:,.2f} / час",
@@ -321,30 +322,57 @@ with col_form:
             "event_description":   event_description,
             "included_items":      [l.strip() for l in included_raw.splitlines()
                                     if l.strip()],
-            "price_rows":          pdf_rows,
+            "price_rows":          offer_rows,
             "additional_services": services,
             "valid_until":         valid_str,
             "total_vat_str":       f"€ {total:,.2f}",
         }
 
-        buf = io.BytesIO()
+        client_slug = client_name.strip().replace(" ", "_") or "Клиент"
+        errors = []
+
+        # Generate PDF
         try:
-            build_pdf(data, buf)
-            buf.seek(0)
-            st.session_state["pdf_bytes"]  = buf.getvalue()
-            st.session_state["pdf_client"] = (
-                client_name.strip().replace(" ", "_") or "Клиент"
-            )
-            st.success("✅  PDF е готов — натиснете бутона по-долу за изтегляне.")
+            buf_pdf = io.BytesIO()
+            build_pdf(data, buf_pdf)
+            buf_pdf.seek(0)
+            st.session_state["pdf_bytes"]  = buf_pdf.getvalue()
+            st.session_state["doc_client"] = client_slug
         except Exception as exc:
-            st.error(f"Грешка при генериране на PDF: {exc}")
+            errors.append(f"PDF: {exc}")
+
+        # Generate Word
+        try:
+            buf_doc = io.BytesIO()
+            build_word(data, buf_doc)
+            buf_doc.seek(0)
+            st.session_state["word_bytes"] = buf_doc.getvalue()
+        except Exception as exc:
+            errors.append(f"Word: {exc}")
+
+        if errors:
+            for e in errors:
+                st.error(f"Грешка: {e}")
+        else:
+            st.success("✅  Офертата е готова — изтеглете я по-долу.")
+
+    client_slug = st.session_state.get("doc_client", "Клиент")
 
     if "pdf_bytes" in st.session_state:
         st.download_button(
-            label="⬇  Изтегли PDF офертата",
+            label="⬇  Изтегли PDF",
             data=st.session_state["pdf_bytes"],
-            file_name=f"Оферта_{st.session_state['pdf_client']}.pdf",
+            file_name=f"Оферта_{client_slug}.pdf",
             mime="application/pdf",
+            use_container_width=True,
+        )
+
+    if "word_bytes" in st.session_state:
+        st.download_button(
+            label="⬇  Изтегли Word (.docx)",
+            data=st.session_state["word_bytes"],
+            file_name=f"Оферта_{client_slug}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             use_container_width=True,
         )
 
