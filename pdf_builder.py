@@ -254,7 +254,7 @@ def build_pdf(data: dict, output):
         Paragraph("Описание",               s_hdr),
         Paragraph("Цена / час",             s_hdr),
         Paragraph("Продължителност",         s_hdr),
-        Paragraph("Такси / Отстъпки",       s_hdr),
+        Paragraph("Отстъпка",                s_hdr),
         Paragraph("Общо",                   s_hdr),
     ]]
 
