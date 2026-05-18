@@ -268,13 +268,12 @@ def build_pdf(data: dict, output):
             Paragraph(str(row.get("total",          "") or ""), rs),
         ])
 
-    n = len(tbl)   # number of rows before summary rows
+    n = len(tbl)   # number of rows before summary row
 
-    # Summary rows
+    # Single summary row — total already includes VAT
     tbl += [
-        [Paragraph("Междинна сума",    s_sum),  "", "", "", Paragraph(data.get("subtotal_str",  "—"), s_sum)],
-        [Paragraph("ДДС 20%",          s_sum),  "", "", "", Paragraph(data.get("vat_str",       "—"), s_sum)],
-        [Paragraph("Общо (вкл. ДДС)", s_total), "", "", "", Paragraph(data.get("total_vat_str", "—"), s_total)],
+        [Paragraph("Обща цена", s_total), "", "", "",
+         Paragraph(data.get("total_vat_str", "—"), s_total)],
     ]
 
     alternating = [
@@ -285,26 +284,20 @@ def build_pdf(data: dict, output):
     table = Table(tbl, colWidths=col_w, repeatRows=1)
     table.setStyle(TableStyle([
         # Header
-        ("BACKGROUND",    (0, 0),  (-1, 0),    C_GREEN),
-        ("LINEBELOW",     (0, 0),  (-1, 0),    1.0, C_GOLD),
+        ("BACKGROUND",    (0, 0), (-1, 0),  C_GREEN),
+        ("LINEBELOW",     (0, 0), (-1, 0),  1.0, C_GOLD),
         # Alternating data rows
         *alternating,
-        # Summary rows
-        ("BACKGROUND",    (0, n),   (-1, n),   colors.HexColor("#EAF1F0")),
-        ("BACKGROUND",    (0, n+1), (-1, n+1), colors.HexColor("#EAF1F0")),
-        ("BACKGROUND",    (0, n+2), (-1, n+2), colors.HexColor("#D4EAE7")),
-        ("LINEABOVE",     (0, n),   (-1, n),   0.5, C_GREY),
-        ("LINEABOVE",     (0, n+2), (-1, n+2), 1.0, C_GOLD),
-        # Span label columns on summary rows
-        ("SPAN",          (0, n),   (3, n)),
-        ("SPAN",          (0, n+1), (3, n+1)),
-        ("SPAN",          (0, n+2), (3, n+2)),
+        # Total row
+        ("BACKGROUND",    (0, n), (-1, n),  colors.HexColor("#D4EAE7")),
+        ("LINEABOVE",     (0, n), (-1, n),  1.0, C_GOLD),
+        ("SPAN",          (0, n), (3,  n)),
         # Grid & padding
-        ("GRID",          (0, 0),  (-1, -1),  0.3, C_GREY),
-        ("VALIGN",        (0, 0),  (-1, -1),  "MIDDLE"),
-        ("TOPPADDING",    (0, 0),  (-1, -1),  5),
-        ("BOTTOMPADDING", (0, 0),  (-1, -1),  5),
-        ("LEFTPADDING",   (0, 0),  (-1, -1),  6),
+        ("GRID",          (0, 0), (-1, -1), 0.3, C_GREY),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 6),
     ]))
     story.append(table)
     story.append(Spacer(1, 14))
@@ -312,12 +305,11 @@ def build_pdf(data: dict, output):
     # ── 4. Additional services ─────────────────────────────────────────────
     heading("4. Допълнителни Услуги")
     service_defs = [
-        ("bar",        "Бар и пакет с напитки",                       "цена при запитване"),
-        ("catering",   "Кетъринг / бюфет",                            "цена при запитване"),
-        ("flowers",    "Флорална декорация",                           "цена при запитване"),
-        ("sound",      "Ъпгрейд на професионална озвучителна система", "цена при запитване"),
-        ("photo",      "Фотография / видеозаснемане",                  "цена при запитване"),
-        ("extra_time", "Удължено време за подготовка",                 "€50 / час"),
+        ("bar",        "Бар и пакет с напитки",       "цена при запитване"),
+        ("catering",   "Кетъринг / бюфет",            "цена при запитване"),
+        ("flowers",    "Флорална декорация",           "цена при запитване"),
+        ("photo",      "Фотография / видеозаснемане",  "цена и наличност при запитване"),
+        ("extra_time", "Удължено време за подготовка", "€50 / час"),
     ]
     services  = data.get("additional_services", {})
     any_shown = False
@@ -341,12 +333,12 @@ def build_pdf(data: dict, output):
     terms = [
         "За потвърждаване на резервацията се изисква 50% депозит. "
         "Оставащата сума се заплаща 7 дни преди събитието.",
-        "При анулация, направена повече от 14 дни преди събитието, депозитът се "
-        "възстановява изцяло. При анулация в рамките на 14 дни преди събитието "
+        "При анулация, направена повече от 7 дни преди събитието, депозитът се "
+        "възстановява изцяло. При анулация в рамките на 7 дни преди събитието "
         "депозитът не подлежи на възстановяване.",
         "Всякакви щети по обекта или оборудването, причинени по време на събитието, "
         "са отговорност на клиента.",
-        "След 23:00 ч. се прилагат ограничения за шума. Lozenets Lounge си запазва "
+        "След 21:00 ч. се прилагат ограничения за шума. Lozenets Lounge си запазва "
         "правото да следи за спазването им.",
         "Внасянето на външни храни и напитки подлежи на предварителна уговорка.",
     ]
@@ -358,8 +350,7 @@ def build_pdf(data: dict, output):
     heading("6. Валидност")
     valid_until = (data.get("valid_until") or "").strip() or "_____________________________"
     story.append(Paragraph(
-        f"Офертата е валидна до: <b>{valid_until}</b> — "
-        "след тази дата цената може да подлежи на промени.",
+        f"Офертата е валидна до: <b>{valid_until}</b>.",
         s_body,
     ))
     story.append(Spacer(1, 18))
@@ -368,7 +359,7 @@ def build_pdf(data: dict, output):
     heading("7. Съгласие и подписи")
     sig_table = Table(
         [
-            [Paragraph("Lozenets Lounge (Подпис и Дата)", s_sig),
+            [Paragraph("Даниела Боянова-Колева (Подпис и Дата)", s_sig),
              Paragraph("Клиент (Подпис и Дата)", s_sig)],
             [Paragraph("____________________________", s_sig),
              Paragraph("____________________________", s_sig)],
